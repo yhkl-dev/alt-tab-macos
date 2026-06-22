@@ -156,7 +156,7 @@ class LicenseManager {
                     self.defaults.removeObject(forKey: "lastValidation")
                     self.defaults.removeObject(forKey: "lastValidationResult")
                     self.defaults.removeObject(forKey: Self.customerEmailKey)
-                    self.state = self.computeTrialState()
+                    self.state = .pro
                     completion(.success(()))
                 case .failure(let error):
                     completion(.failure(error))
@@ -175,16 +175,6 @@ class LicenseManager {
 
     func computeState() -> LicenseState {
         return .pro
-    }
-
-    private func computeTrialState() -> LicenseState {
-        if defaults.object(forKey: "trialStartDate") == nil {
-            defaults.set(clock.now.timeIntervalSince1970, forKey: "trialStartDate")
-        }
-        let trialStart = Date(timeIntervalSince1970: defaults.double(forKey: "trialStartDate"))
-        let daysSinceTrialStart = Int(clock.now.timeIntervalSince(trialStart) / (24 * 60 * 60))
-        guard daysSinceTrialStart < Self.trialDuration else { return .trialExpired }
-        return .trial(daysRemaining: Self.trialDuration - daysSinceTrialStart)
     }
 
     func scheduleAsyncRevalidationIfNeeded() {
@@ -207,11 +197,7 @@ class LicenseManager {
                     if let variantId = response.variantId {
                         self.keychain.setValue(variantId, account: Self.keychainVariantAccount)
                     }
-                    if response.valid {
-                        self.state = self.computeState()
-                    } else {
-                        self.state = .trialExpired
-                    }
+                    self.state = .pro
                 case .failure:
                     break // network error: do nothing, try again next launch
                 }
