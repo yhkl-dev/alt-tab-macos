@@ -3,8 +3,11 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write
+
 jobs:
-  build-and-test:
+  build-and-release:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
@@ -19,3 +22,17 @@ jobs:
       - run: |
           set -o pipefail
           xcodebuild -project alt-tab-macos.xcodeproj -scheme Release -derivedDataPath DerivedData CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM="" | scripts/xcbeautify
+      - name: Package and Release
+        run: |
+          APP_PATH="DerivedData/Build/Products/Release/AltTab.app"
+          ZIP_NAME="AltTab-${GITHUB_SHA::7}.zip"
+          ditto -c -k --keepParent "$APP_PATH" "$ZIP_NAME"
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+        id: package
+      - uses: softprops/action-gh-release@v3
+        with:
+          name: "AltTab (auto-build)"
+          tag_name: nightly
+          prerelease: true
+          body: "Auto-built from commit [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})"
+          files: ${{ steps.package.outputs.zip_name }}
