@@ -7,17 +7,11 @@ class AppCenterCrash: NSObject {
 
     override init() {
         super.init()
-        // Enable catching uncaught exceptions thrown on the main thread
         UserDefaults.standard.register(defaults: ["NSApplicationCrashOnExceptions": true])
-//        AppCenter.logLevel = .verbose
-        // without this, appcenter makes network call just from AppCenter.start; we only want networking when sending reports
+        guard !AppCenterCrash.secret.isEmpty else { return }
         AppCenter.networkRequestsAllowed = false
-        // Wire the delegate + confirmation handler before start: AppCenter processes pending crash
-        // reports synchronously inside +start, and if userConfirmationHandler is nil at that point
-        // it falls through to MSACUserConfirmationSend and silently uploads without prompting.
         Crashes.delegate = self
         Crashes.userConfirmationHandler = confirmationHandler
-        guard !AppCenterCrash.secret.isEmpty else { return }
         AppCenter.start(withAppSecret: AppCenterCrash.secret, services: [Crashes.self])
     }
 
