@@ -16,4 +16,6 @@ jobs:
       - run: npm ci
       - run: scripts/ensure_generated_files_are_up_to_date.sh
       - run: scripts/run_tests.sh
-      - run: scripts/build_app.sh
+      - run: |
+          set -o pipefail
+          xcodebuild -project alt-tab-macos.xcodeproj -scheme Release -derivedDataPath DerivedData CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM="" | scripts/xcbeautify
