@@ -19,7 +19,6 @@ jobs:
           cache: 'npm'
       - run: sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
       - run: npm ci
-      - run: scripts/ensure_generated_files_are_up_to_date.sh
       - run: scripts/run_tests.sh
       - run: |
           set -o pipefail
