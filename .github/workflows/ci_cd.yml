@@ -21,7 +21,7 @@ jobs:
       - run: scripts/run_tests.sh
       - run: |
           set -o pipefail
-          xcodebuild -project alt-tab-macos.xcodeproj -scheme Release -derivedDataPath DerivedData CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM="" | scripts/xcbeautify
+          xcodebuild -project alt-tab-macos.xcodeproj -scheme Release -derivedDataPath DerivedData CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES | scripts/xcbeautify
       - name: Package and Release
         run: |
           APP_PATH="DerivedData/Build/Products/Release/AltTab.app"
