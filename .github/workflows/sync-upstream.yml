@@ -87,7 +87,7 @@ jobs:
         run: |
           TITLE="AltTab 上游更新"
           BODY="${{ steps.check.outputs.new_commits }} 个新提交 · ${{ steps.sync.outputs.status }}"
-          curl -sS "https://api.day.app/jEXbsfxiHxG8mfZL653nr9/${TITLE}/${BODY}"
+          curl -sS "https://api.day.app/${{ secrets.BARK_KEY }}/${TITLE}/${BODY}"
 
       - name: Skip (no new commits)
         if: steps.check.outputs.new_commits == '0'
