@@ -1,0 +1,87 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Every Sunday at UTC 00:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/lwouis/alt-tab-macos.git
+          git fetch upstream master
+
+      - name: Check for new commits
+        id: check
+        run: |
+          UPSTREAM_HEAD=$(git rev-parse upstream/master)
+          ORIGIN_HEAD=$(git rev-parse origin/master)
+          echo "upstream_head=$UPSTREAM_HEAD" >> "$GITHUB_OUTPUT"
+          echo "new_commits=$(git rev-list --count $ORIGIN_HEAD..$UPSTREAM_HEAD)" >> "$GITHUB_OUTPUT"
+          echo "upstream already synced: $ORIGIN_HEAD..$UPSTREAM_HEAD"
+          git log --oneline $ORIGIN_HEAD..$UPSTREAM_HEAD
+
+      - name: Create sync branch and merge
+        if: steps.check.outputs.new_commits != '0'
+        id: sync
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          BRANCH="sync/upstream-${DATE}"
+          git checkout -b "$BRANCH" origin/master
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git merge upstream/master --no-edit; then
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+            git push origin "$BRANCH"
+          else
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            CONFLICTS=$(git diff --name-only --diff-filter=U | tr '\n' ', ' | sed 's/, $//')
+            echo "conflicts=$CONFLICTS" >> "$GITHUB_OUTPUT"
+            # Push the conflicted branch anyway so user can resolve
+            git push origin "$BRANCH" || true
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create PR (clean merge)
+        if: steps.check.outputs.new_commits != '0' && steps.sync.outputs.status == 'clean'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMIT_COUNT="${{ steps.check.outputs.new_commits }}"
+          gh pr create \
+            --repo ${{ github.repository }} \
+            --base master \
+            --head "${{ steps.sync.outputs.branch }}" \
+            --title "sync: upstream changes ($COMMIT_COUNT commits)" \
+            --body "Auto-synced $COMMIT_COUNT commit(s) from [lwouis/alt-tab-macos](https://github.com/lwouis/alt-tab-macos). Merge was clean."
+
+      - name: Create PR (with conflicts)
+        if: steps.check.outputs.new_commits != '0' && steps.sync.outputs.status == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMIT_COUNT="${{ steps.check.outputs.new_commits }}"
+          gh pr create \
+            --repo ${{ github.repository }} \
+            --base master \
+            --head "${{ steps.sync.outputs.branch }}" \
+            --title "sync: upstream changes ($COMMIT_COUNT commits) ⚠️ conflicts" \
+            --body "Auto-synced $COMMIT_COUNT commit(s) from [lwouis/alt-tab-macos](https://github.com/lwouis/alt-tab-macos).
+          **⚠️ Merge conflicts** in: ${{ steps.sync.outputs.conflicts }}
+          Resolve conflicts manually, then merge."
+
+      - name: Skip (no new commits)
+        if: steps.check.outputs.new_commits == '0'
+        run: echo "Already up to date. Nothing to sync."
