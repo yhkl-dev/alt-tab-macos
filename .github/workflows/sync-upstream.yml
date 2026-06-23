@@ -85,8 +85,8 @@ jobs:
       - name: Notify via Bark
         if: steps.check.outputs.new_commits != '0'
         run: |
-          TITLE="AltTab 上游更新"
-          BODY="${{ steps.check.outputs.new_commits }} 个新提交 · ${{ steps.sync.outputs.status }}"
+          TITLE=$(echo -n "AltTab 上游更新" | python3 -c "import sys,urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
+          BODY=$(echo -n "${{ steps.check.outputs.new_commits }} 个新提交 · ${{ steps.sync.outputs.status }}" | python3 -c "import sys,urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
           curl -sS "https://api.day.app/${{ secrets.BARK_KEY }}/${TITLE}/${BODY}"
 
       - name: Skip (no new commits)
